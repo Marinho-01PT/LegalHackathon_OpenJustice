@@ -3,6 +3,23 @@
 Legal Hackathon HSG 2026 · Challenge "Swiss Law, Swiss Model: Benchmarking Apertus with OpenJustice" · Sub-challenge 2.
 Domain: Swiss tenancy law (Mietrecht), protocol built by our legal team members in OpenJustice.
 
+## App (Streamlit)
+A tenant-facing app on top of OpenJustice. The protocol is built in the OpenJustice editor; the app only calls it.
+```bash
+pip install -r requirements.txt
+streamlit run app/streamlit_app.py      # from the repo root; without OJ_API_KEY it runs in demo mode
+```
+Pages: **Frage stellen** (situation + question → answer with Prüfpfad, cited articles checked against
+`data/law`, missing facts asked back to the user; optional side-by-side without protocol) · **Häufige Fragen**
+(`data/faq.json`, editable by the legal team) · **Fälle vergleichen** (all dev cases with and without protocol,
+saved to `results/app/`).
+
+| Folder | Role |
+|---|---|
+| `app/core` | OpenJustice access (builds on `ojbench`), sources check, content loading. No Streamlit. |
+| `app/ui` | theme, shared components, cached state, sidebar |
+| `app/views` | one module per page. New page = new module + one `st.Page` line in `app/streamlit_app.py` |
+
 ## Question
 OpenJustice runs a reasoning protocol node by node (one LLM step per node). Can an agent that reads the
 **whole protocol up front, turns it into a plan and executes it in one request** give answers that are as good

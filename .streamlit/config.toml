@@ -1,0 +1,21 @@
+[theme]
+base = "light"
+primaryColor = "#2F5D50"
+backgroundColor = "#F3F5F2"
+secondaryBackgroundColor = "#E8ECE6"
+textColor = "#1D2622"
+borderColor = "#D3D9D2"
+linkColor = "#2F5D50"
+baseRadius = "6px"
+showWidgetBorder = true
+font = "Hanken Grotesk:https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+headingFont = "Hanken Grotesk:https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+
+[theme.sidebar]
+backgroundColor = "#E8ECE6"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

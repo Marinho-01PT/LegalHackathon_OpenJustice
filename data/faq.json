@@ -1,0 +1,17 @@
+[
+  {"id": "formular", "topic": "Mietzinserhöhung",
+   "question": "Ist eine Mietzinserhöhung per einfachem Brief gültig?",
+   "situation": "Mein Vermieter hat mir per normalem Brief mitgeteilt, dass die Miete ab dem nächsten Kündigungstermin um 8 % steigt. Ein amtliches Formular lag nicht bei."},
+  {"id": "begruendung", "topic": "Mietzinserhöhung",
+   "question": "Muss der Vermieter eine Erhöhung begründen?",
+   "situation": "Ich habe das amtliche Formular für eine Mietzinserhöhung erhalten. Im Feld für die Begründung steht nur «Anpassung an den Markt»."},
+  {"id": "frist", "topic": "Mietzinserhöhung",
+   "question": "Kann ich eine Erhöhung noch anfechten?",
+   "situation": "Die Mietzinserhöhung auf dem amtlichen Formular habe ich vor fünf Wochen erhalten. Ich halte sie für missbräuchlich, habe aber noch nichts unternommen."},
+  {"id": "kurzfristig", "topic": "Mietzinserhöhung",
+   "question": "Gilt eine Erhöhung, die sehr kurzfristig angekündigt wurde?",
+   "situation": "Das Formular für die Mietzinserhöhung kam eine Woche vor Ablauf der Kündigungsfrist bei mir an. Die Erhöhung soll ab dem nächsten Monat gelten."},
+  {"id": "referenzzins", "topic": "Referenzzinssatz",
+   "question": "Der Referenzzinssatz ist gesunken. Kann ich eine Senkung verlangen?",
+   "situation": "Seit meinem letzten Mietvertrag ist der hypothekarische Referenzzinssatz gesunken. Mein Vermieter hat die Miete aber nicht angepasst."}
+]
