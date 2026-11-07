@@ -1,0 +1,10 @@
+# secrets
+.env
+# challenge rule: test cases never in a (public) repository
+data/cases/test/*
+!data/cases/test/.gitkeep
+# run outputs contain case texts and model answers
+results/*
+!results/.gitkeep
+__pycache__/
+.DS_Store

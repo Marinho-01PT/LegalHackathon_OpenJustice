@@ -1,0 +1,36 @@
+{
+  "id": "example_mietzins",
+  "name": "BEISPIEL (nur Pipeline-Test): Anfechtung einer Mietzinserhöhung",
+  "description": ["Vereinfachtes Beispiel im Format der OpenJustice Protocol Graph API. Wird durch das echte Protokoll des Teams ersetzt."],
+  "version": 1, "visibility": "private", "startNodeId": ["start"],
+  "createdAt": "2026-11-07T12:00:00Z", "updatedAt": "2026-11-07T12:00:00Z",
+  "nodes": [
+    {"id": "start", "label": "Start", "type": "start"},
+    {"id": "intake", "label": "Sachverhalt", "type": "fact", "factDefinitions": [
+      {"id": "zugang", "label": "Datum Zugang der Erhöhungsmitteilung", "question": "Wann hat die Mieterin die Mitteilung erhalten?", "instructions": "", "dataType": "date", "required": true},
+      {"id": "wirksam", "label": "Wirksamkeitsdatum der Erhöhung", "question": "Ab wann soll der neue Mietzins gelten?", "instructions": "", "dataType": "date", "required": true}]},
+    {"id": "formular", "label": "Amtliches Formular", "type": "reasoning", "question": "Wurde die Erhöhung auf dem kantonal genehmigten Formular mitgeteilt?", "instructions": "Art. 269d Abs. 1 OR", "dataType": "boolean", "customEnumValues": [], "annotations": []},
+    {"id": "begruendung", "label": "Begründung", "type": "reasoning", "question": "Ist die Erhöhung auf dem Formular begründet?", "instructions": "Art. 269d Abs. 2 lit. b OR", "dataType": "boolean", "customEnumValues": [], "annotations": []},
+    {"id": "termin", "label": "Termin und Frist", "type": "reasoning", "question": "Wurde die Mitteilung mindestens 10 Tage vor Beginn der Kündigungsfrist zugestellt?", "instructions": "Art. 269d Abs. 1 OR", "dataType": "boolean", "customEnumValues": [], "annotations": []},
+    {"id": "formgueltig", "label": "Formgültigkeit", "type": "reasoning", "question": "Ist die Erhöhung formgültig mitgeteilt?", "instructions": "Fasse die Teilprüfungen zusammen. Formmangel -> Nichtigkeit (Art. 269d Abs. 2 OR).", "dataType": "boolean", "customEnumValues": [], "annotations": []},
+    {"id": "switch_form", "label": "Formgültig?", "type": "switch"},
+    {"id": "nichtig", "label": "Erhöhung nichtig", "type": "outcome", "responseType": "unstructured", "instructions": "Erkläre die Nichtigkeit und dass keine Anfechtung nötig ist."},
+    {"id": "anfechtungsfrist", "label": "Anfechtungsfrist", "type": "reasoning", "question": "Kann die Erhöhung noch innert 30 Tagen seit Mitteilung bei der Schlichtungsbehörde angefochten werden?", "instructions": "Art. 270b Abs. 1 OR", "dataType": "boolean", "customEnumValues": [], "annotations": []},
+    {"id": "switch_frist", "label": "Frist offen?", "type": "switch"},
+    {"id": "anfechtbar", "label": "Anfechtung möglich", "type": "outcome", "responseType": "unstructured", "instructions": "Erkläre Vorgehen bei der kantonalen Schlichtungsbehörde."},
+    {"id": "verwirkt", "label": "Frist verpasst", "type": "outcome", "responseType": "unstructured", "instructions": "Erkläre die Folgen der verpassten Frist."}
+  ],
+  "edges": [
+    {"from": "start", "to": "intake", "kind": "next"},
+    {"from": "intake", "to": "formgueltig", "kind": "next"},
+    {"from": "formgueltig", "to": "formular", "kind": "sub_reasoning"},
+    {"from": "formgueltig", "to": "begruendung", "kind": "sub_reasoning"},
+    {"from": "formgueltig", "to": "termin", "kind": "sub_reasoning"},
+    {"from": "formgueltig", "to": "switch_form", "kind": "next"},
+    {"from": "switch_form", "to": "nichtig", "kind": "branch", "branch": {"branchId": "b1", "isDefault": false, "conditions": [{"sourceNodeId": "formgueltig", "operator": "==", "compareValue": false, "conditionOperator": "AND"}]}},
+    {"from": "switch_form", "to": "anfechtungsfrist", "kind": "branch", "branch": {"branchId": "b2", "isDefault": true, "conditions": []}},
+    {"from": "anfechtungsfrist", "to": "switch_frist", "kind": "next"},
+    {"from": "switch_frist", "to": "anfechtbar", "kind": "branch", "branch": {"branchId": "b3", "isDefault": false, "conditions": [{"sourceNodeId": "anfechtungsfrist", "operator": "==", "compareValue": true, "conditionOperator": "AND"}]}},
+    {"from": "switch_frist", "to": "verwirkt", "kind": "branch", "branch": {"branchId": "b4", "isDefault": true, "conditions": []}}
+  ]
+}

@@ -1,0 +1,3 @@
+Jurisdiction: CH, Kanton St. Gallen
+FACTS: (eigener Übungsfall – KEINE Testfälle hier verwenden)
+QUESTION: ...

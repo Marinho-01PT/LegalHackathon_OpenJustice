@@ -1,0 +1,10 @@
+{
+  "id": "dummy_001",
+  "protocol_id": "example_mietzins",
+  "jurisdiction": "CH, Kanton St. Gallen",
+  "legal_date": "2026-11-01",
+  "facts": "DUMMY-FALL NUR FÜR PIPELINE-TESTS – durch eigene Fälle ersetzen. Der Vermieter teilt per einfachem Brief (ohne Formular) eine Mietzinserhöhung von 8 % mit.",
+  "question": "Muss die Mieterin die Erhöhung anfechten?",
+  "expected_outcome": "nichtig",
+  "reference_analysis": "Dummy: Ohne amtliches Formular ist die Erhöhung nichtig (Art. 269d Abs. 2 OR); eine Anfechtung ist nicht nötig."
+}
