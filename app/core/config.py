@@ -19,6 +19,9 @@ class Settings:
     default_model: str        # OJ_MODEL: preselected model; empty = first Apertus model offered
     mock: bool                # offline fake API (automatic when no key is set)
     app_name: str
+    legal_area: str = "Mietrecht"   # LEGAL_AREA: used to look for help nearby
+    publicai_key: str = ""    # PUBLICAI_API_KEY: follow-up actions run on Apertus via Public AI
+    publicai_model: str = ""  # PUBLICAI_MODEL: empty = largest Apertus model offered
 
     @property
     def cache_key(self) -> str:
@@ -35,4 +38,7 @@ def load_settings() -> Settings:
         default_model=os.environ.get("OJ_MODEL", "").strip(),
         mock=os.environ.get("APP_MOCK", "").strip() in ("1", "true", "yes") or not key,
         app_name=os.environ.get("APP_NAME", "Mietkompass").strip(),
+        legal_area=os.environ.get("LEGAL_AREA", "Mietrecht").strip(),
+        publicai_key=os.environ.get("PUBLICAI_API_KEY", "").strip(),
+        publicai_model=os.environ.get("PUBLICAI_MODEL", "").strip(),
     )

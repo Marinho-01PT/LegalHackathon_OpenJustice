@@ -11,8 +11,8 @@ streamlit run app/streamlit_app.py      # from the repo root; without OJ_API_KEY
 ```
 Pages: **Frage stellen** (situation + question → answer with Prüfpfad, cited articles checked against
 `data/law`, missing facts asked back to the user; optional side-by-side without protocol) · **Häufige Fragen**
-(`data/faq.json`, editable by the legal team) · **Fälle vergleichen** (all dev cases with and without protocol,
-saved to `results/app/`).
+(`data/faq.json`, editable by the legal team). After an answer: **E-Mail an die Vermietung** (Apertus via Public AI,
+actions in `app/core/actions.py`).
 
 | Folder | Role |
 |---|---|

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import datetime as dt
-from concurrent.futures import ThreadPoolExecutor
 
 import streamlit as st
 
@@ -43,19 +42,16 @@ def _live(svc, pid: str, res):
     return res
 
 
-def _run(facts: str, question: str, canton: str, day: dt.date, compare: bool) -> None:
+def _run(facts: str, question: str, canton: str, place: str, day: dt.date) -> None:
     pid, model = state.selection()
     svc = state.service()
+    for k in [k for k in st.session_state if str(k).startswith(("act-", "mail-"))]:
+        del st.session_state[k]
     prompt = build_prompt(facts, question, f"CH, Kanton {canton}", day.isoformat())
-    with ThreadPoolExecutor(max_workers=1) as ex:
-        fd = ex.submit(svc.run_direct, model, prompt) if compare else None
-        res = _live(svc, pid, svc.start(pid, model, prompt))
-        if fd:
-            with st.spinner("Die Antwort ohne Prüfschema wird fertiggestellt …"):
-                direct = fd.result()
-        else:
-            direct = None
-    st.session_state["ask"] = {"protocol": res, "direct": direct, "pid": pid, "model": model}
+    res = _live(svc, pid, svc.start(pid, model, prompt))
+    st.session_state["ask"] = {"protocol": res, "pid": pid, "model": model,
+                               "facts": facts, "question": question, "jurisdiction": f"CH, Kanton {canton}",
+                               "canton": canton, "place": place}
 
 
 def _questions(res, pid: str, model: str) -> None:
@@ -85,30 +81,19 @@ def _questions(res, pid: str, model: str) -> None:
         st.rerun()
 
 
-def _protocol_arm(res, key: str, wide: bool) -> None:
+def _result(res) -> None:
     ui.outcome(res)
-    if wide:
-        left, right = st.columns([1.7, 1], gap="large")
-        with left:
-            ui.answer(res, key)
-        with right:
-            st.markdown("**Prüfpfad**")
-            st.caption("Diese Schritte des Prüfschemas hat das Modell durchlaufen.")
-            ui.path(res)
-        st.markdown("**Zitierte Artikel**")
-        ui.sources(res)
-        with st.expander("LLM-Aufrufe je Prüfschritt"):
-            ui.traces(res, key)
-    else:
-        t1, t2, t3, t4 = st.tabs(["Antwort", "Prüfpfad", "Zitierte Artikel", "LLM-Aufrufe"])
-        with t1:
-            ui.answer(res, key)
-        with t2:
-            ui.path(res)
-        with t3:
-            ui.sources(res)
-        with t4:
-            ui.traces(res, key)
+    left, right = st.columns([1.7, 1], gap="large")
+    with left:
+        ui.answer(res, "ask")
+    with right:
+        st.markdown("**Prüfpfad**")
+        st.caption("Diese Schritte des Prüfschemas hat das Modell durchlaufen.")
+        ui.path(res)
+    st.markdown("**Zitierte Artikel**")
+    ui.sources(res)
+    with st.expander("LLM-Aufrufe je Prüfschritt"):
+        ui.traces(res, "ask")
     ui.usage(res)
 
 
@@ -124,11 +109,11 @@ def render() -> None:
                              placeholder="Zum Beispiel: Mein Vermieter hat mir am 3. Oktober per Brief mitgeteilt, "
                                          "dass die Miete ab Januar um 8 % steigt. Ein Formular lag nicht bei.")
         question = st.text_input("Ihre Frage", key="question", placeholder="Muss ich die Erhöhung anfechten?")
-        c1, c2, c3 = st.columns([1.1, 1, 1.4], vertical_alignment="bottom")
+        c1, c2, c3 = st.columns([1.1, 1.1, 1], vertical_alignment="bottom")
         canton = c1.selectbox("Kanton", CANTONS, index=CANTONS.index("St. Gallen"), key="canton")
-        day = c2.date_input("Stichtag", value=dt.date.today(), format="DD.MM.YYYY", key="legal_date")
-        compare = c3.toggle("Mit Antwort ohne Prüfschema vergleichen", key="compare",
-                            help="Dasselbe Modell beantwortet die Frage zusätzlich ohne Prüfschema.")
+        place = c2.text_input("Wohnort (optional)", key="place", placeholder="z. B. Rorschach",
+                              help="Wird nur für die Suche nach Anlaufstellen in Ihrer Nähe verwendet.")
+        day = c3.date_input("Stichtag", value=dt.date.today(), format="DD.MM.YYYY", key="legal_date")
         submitted = st.form_submit_button("Einschätzung erstellen", type="primary")
 
     pid, model = state.selection()
@@ -138,33 +123,19 @@ def render() -> None:
         elif not pid or not model:
             st.warning("Wählen Sie links ein Prüfschema und ein Modell.")
         else:
-            _run(facts, question or "Wie ist die Rechtslage?", canton, day, compare)
+            _run(facts, question or "Wie ist die Rechtslage?", canton, place, day)
 
     run = st.session_state.get("ask")
     if not run:
         return
     st.divider()
-    p, d = run["protocol"], run["direct"]
+    p = run["protocol"]
     if p.status == "awaiting_input":
         _questions(p, run["pid"], run["model"])
-    if d is None:
-        _protocol_arm(p, "single", wide=True)
-    else:
-        a, b = st.columns(2, gap="large")
-        with a:
-            ui.arm_title(f"{run['model']} allein", "ohne Prüfschema")
-            t1, t2 = st.tabs(["Antwort", "Zitierte Artikel"])
-            with t1:
-                ui.answer(d, "direct")
-            with t2:
-                ui.sources(d)
-            ui.usage(d)
-        with b:
-            ui.arm_title(f"{run['model']} mit Prüfschema", "OpenJustice")
-            _protocol_arm(p, "protocol", wide=False)
+    _result(p)
+    st.divider()
+    ui.next_steps(p, run, "ask")
     with st.expander("Technische Details"):
         ui.raw(p)
-        if d:
-            ui.raw(d)
     if s.mock:
         st.caption("Demo-Modus: Die Antworten stammen nicht vom Modell.")

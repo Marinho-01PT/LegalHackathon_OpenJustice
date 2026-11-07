@@ -38,6 +38,17 @@ def _chip(v: str) -> str:
     return _BOOL.get(s.lower(), s) if 0 < len(s) <= 40 else ""
 
 
+def _fact_questions(graph: Protocol | None) -> dict[str, str]:
+    """Fact definition id / label -> its question, from the protocol graph."""
+    out: dict[str, str] = {}
+    for n in (graph.nodes.values() if graph else []):
+        for fd in n.fact_definitions:
+            if fd.get("question"):
+                out[fd.get("id", "")] = fd["question"]
+                out[(fd.get("label") or "").strip().lower()] = fd["question"]
+    return out
+
+
 def friendly_error(exc) -> str:
     msg = str(exc)
     if "-> 401" in msg or "-> 403" in msg:
@@ -197,10 +208,13 @@ class OJService:
                 res.steps.append(Step(item.get("node_id", ""), "fact", item.get("label") or item.get("node_id", ""),
                                       _chip(pred) or pred[:40], item.get("rationale") or ""))
             elif t == "pending_input":
+                asked = _fact_questions(graph)
                 for fd in item.get("fact_definitions", []):
-                    res.pending.append(Question(fd.get("id", ""), fd.get("label", ""),
-                                                fd.get("question") or fd.get("instructions") or fd.get("label", ""),
-                                                fd.get("dataType") or fd.get("data_type") or "text", bool(fd.get("required"))))
+                    fid, label = fd.get("id", ""), fd.get("label", "")
+                    # the user sees the fact's QUESTION from the protocol, never its instructions (meant for the model)
+                    q = fd.get("question") or asked.get(fid) or asked.get(label.strip().lower()) or label
+                    res.pending.append(Question(fid, label, q, fd.get("dataType") or fd.get("data_type") or "text",
+                                                bool(fd.get("required"))))
         status = resp.get("status")
         text = output_text(resp).strip()
         if text and status != "incomplete":          # incomplete: the message only repeats the pending questions
@@ -215,6 +229,71 @@ class OJService:
         else:
             res.status = "completed"
         return res
+
+    # ---------------------------------------------------------------- follow-up actions
+    def run_action(self, action, model: str, ctx: str, publicai_key: str = "", publicai_model: str = "") -> dict:
+        """Follow-up action with the action's system prompt -> parsed JSON (+ usage, model) or {'error'}.
+        backend publicai (with key): Apertus via Public AI. Otherwise: OpenJustice agent endpoint, streamed
+        (keep-alives avoid the ~100 s gateway timeout during web searches)."""
+        from .actions import JSON_RULE, keep_sourced, parse
+        if action.backend == "publicai" and publicai_key and not self.mock:
+            from .publicai import client
+            try:
+                c = client(publicai_key, publicai_model)
+                d = c.chat(action.system + (JSON_RULE if action.id == "email" else ""), ctx, temperature=0.2)
+            except BaseException as exc:          # ojbench.publicai raises SystemExit without a key
+                return {"error": "Public AI: " + friendly_error(exc)}
+            out = keep_sourced(parse(action, d["text"]))
+            out["usage"] = {"tokens": (d.get("prompt_tokens") or 0) + (d.get("completion_tokens") or 0),
+                            "seconds": d.get("seconds", 0)}
+            out["model"] = f"{c.model} (Public AI)"
+            return out
+
+        body = {"model": model, "instructions": action.system, "input": ctx,
+                "tools": [{"type": t} for t in action.tools]}
+        if action.tools:
+            body["max_tool_calls"] = 6
+        if action.schema:
+            body["text"] = {"format": {"type": "json_schema", "name": action.id, "strict": True, "schema": action.schema}}
+        try:
+            resp, secs = self.client.agent(body) if self.mock else self._agent_stream(body)
+        except Exception as exc:
+            return {"error": friendly_error(exc)}
+        if resp.get("status") == "failed":
+            return {"error": friendly_error((resp.get("error") or {}).get("message") or "Lauf fehlgeschlagen")}
+        tin, tout = usage_of(resp)
+        out = keep_sourced(parse(action, output_text(resp)))
+        out["usage"] = {"tokens": tin + tout, "seconds": round(secs, 1)}
+        out["model"] = f"{model} (OpenJustice)"
+        return out
+
+    def _agent_stream(self, body: dict) -> tuple[dict, float]:
+        """POST /agent/v1/responses with stream: true; returns the final Response object."""
+        import urllib.error
+        import urllib.request
+        c = self.client
+        req = urllib.request.Request(c.base + "/agent/v1/responses", method="POST",
+                                     data=json.dumps({**body, "stream": True}).encode(),
+                                     headers={"Authorization": f"Bearer {c.key}", "Content-Type": "application/json",
+                                              "Accept": "text/event-stream", "User-Agent": "ojbench-hackathon/0.3"})
+        t0, final = time.perf_counter(), None
+        try:
+            with urllib.request.urlopen(req, timeout=c.timeout) as r:
+                for raw in r:
+                    line = raw.decode("utf-8", "replace").strip()
+                    if not line.startswith("data:"):
+                        continue
+                    try:
+                        ev = json.loads(line[5:].strip())
+                    except ValueError:
+                        continue
+                    if ev.get("type") in ("response.completed", "response.incomplete", "response.failed"):
+                        final = ev.get("response") or {}
+        except urllib.error.HTTPError as e:
+            raise RuntimeError(f"POST /agent/v1/responses -> {e.code}: {e.read().decode(errors='replace')[:500]}") from None
+        if final is None:
+            raise RuntimeError("Die Verbindung wurde beendet, bevor eine Antwort kam.")
+        return final, time.perf_counter() - t0
 
     # ---------------------------------------------------------------- arm B: without protocol
     def run_direct(self, model: str, prompt: str) -> RunResult:
