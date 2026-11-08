@@ -64,17 +64,7 @@ Same model id for A and B: `publicai-apertus-70b` (offered by both endpoints).
 - **Additional checks without an LLM:** cited articles exist (against the Fedlex text in `data/law/OR.txt`),
   outcome = reference outcome, tokens / time / cost per case.
 
-### Results
-*(fill in after the final run – dev and test separately)*
-
-| Condition | n | Citation | Facts | Reasoning | Outcome correct | Articles exist | Ø tokens | Ø sec |
-|---|---|---|---|---|---|---|---|---|
-| A – Apertus direct | | | | | | | | |
-| B – Apertus + protocol | | | | | | | | |
-| C – Frontier direct | | | | | | | | |
-
-### Annotated failures
-*(2–3 cases: what went wrong, why, in which condition)*
+Results and annotated failures are presented in the pitch.
 
 ## 5. The app (demo)
 Streamlit app on top of OpenJustice. The protocols are built in the OpenJustice editor; the app only calls them.
@@ -154,5 +144,4 @@ It is **not part of this submission**.
   handling), README structure. All code reviewed and tested by the team.
 - **Apertus (via OpenJustice / Public AI):** the model under test; also drafts e-mails and searches for help in the app.
 - Cases, reference analyses and the reasoning protocol were written by the team **without** LLM use
-  (challenge rule); LLM use for proofreading, if any: …
-- *(add every further use: tool, purpose, where)*
+  (challenge rule).
