@@ -12,7 +12,7 @@ from pathlib import Path
 from .models import Condition, Edge, Node, Protocol
 from .oj_client import OJClient
 
-# TODO verify with the first real graph: does a `sub_reasoning` edge point parent -> child
+# Assumption (only relevant for the unused plan-based engine): a `sub_reasoning` edge points parent -> child
 # (from = parent) or child -> parent? The docs only say the child "runs first and feeds its parent".
 SUB_EDGE_FROM_IS_PARENT = True
 

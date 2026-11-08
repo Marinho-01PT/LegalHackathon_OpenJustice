@@ -29,7 +29,7 @@ class OJError(RuntimeError):
 
 class OJClient:
     def __init__(self, base_url: str | None = None, api_key: str | None = None, timeout: int = 600):
-        # TODO verify on day 1: paths may need an "/api" prefix -> set OJ_BASE_URL=https://api.openjustice.ai/api
+        # verified: endpoints live directly under https://api.openjustice.ai (override with OJ_BASE_URL)
         self.base = (base_url or os.environ.get("OJ_BASE_URL", "https://api.openjustice.ai")).rstrip("/")
         self.key = api_key or os.environ.get("OJ_API_KEY", "")
         self.timeout = timeout

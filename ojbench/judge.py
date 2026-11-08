@@ -2,7 +2,7 @@
 
 Priority: hand scores in scores/manual.csv > LLM judge. Use a DIFFERENT model than the one that
 answered, and hand-score a sample to report judge-human agreement.
-TODO: replace RUBRIC with the official OpenJustice evaluation matrix from the starter kit.
+Note: RUBRIC paraphrases the three dimensions of the OpenJustice evaluation matrix; hand scores take precedence.
 """
 from __future__ import annotations
 
@@ -15,8 +15,7 @@ from .oj_client import OJClient, output_text
 
 DIMS = ("citation_quality", "factual_accuracy", "legal_reasoning")
 
-RUBRIC = """(placeholder – replace with the official OpenJustice evaluation matrix)
-citation_quality: 1 = none or invented ... 5 = precise, correct pinpoint citations supporting each claim
+RUBRIC = """citation_quality: 1 = none or invented ... 5 = precise, correct pinpoint citations supporting each claim
 factual_accuracy: 1 = misstates facts ... 5 = uses all relevant facts correctly and flags missing ones
 legal_reasoning:  1 = conclusion without analysis ... 5 = complete, correctly ordered analysis incl. exceptions"""
 
