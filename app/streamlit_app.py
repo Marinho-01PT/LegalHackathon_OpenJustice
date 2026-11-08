@@ -16,14 +16,13 @@ os.chdir(ROOT)
 import streamlit as st  # noqa: E402
 
 from app.ui import nav, sidebar, state, theme  # noqa: E402
-from app.views import ask, faq  # noqa: E402
+from app.views import ask  # noqa: E402  (faq page removed: FAQ topics exceeded the protocol's scope)
 
 st.set_page_config(page_title=state.settings().app_name, page_icon="⚖️", layout="wide")
 theme.inject()
 
 nav.PAGES.update({
     "ask": st.Page(ask.render, title="Frage stellen", icon=":material/edit_note:", url_path="frage", default=True),
-    "faq": st.Page(faq.render, title="Häufige Fragen", icon=":material/help_outline:", url_path="faq"),
 })
 page = st.navigation(list(nav.PAGES.values()))
 sidebar.render()

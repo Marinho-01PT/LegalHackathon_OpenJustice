@@ -65,8 +65,37 @@ def friendly_error(exc) -> str:
 
 
 def build_prompt(facts: str, question: str, jurisdiction: str = "CH", legal_date: str = "") -> str:
-    return Case(id="app", facts=facts, question=question, protocol_id="",
-                jurisdiction=jurisdiction, legal_date=legal_date).prompt_block()
+    block = Case(id="app", facts=facts, question=question, protocol_id="",
+                 jurisdiction=jurisdiction, legal_date=legal_date).prompt_block()
+    # the protocol endpoint takes no instructions, so the answer language is asked for in the input itself
+    return block + "\n\n" + language_line(f"{facts} {question}")
+
+
+_STOP = {
+    "de": ("der", "die", "das", "und", "ist", "nicht", "mein", "meine", "ich", "mit", "vermieter", "wohnung", "miete"),
+    "fr": ("le", "la", "les", "et", "est", "pas", "mon", "ma", "je", "avec", "bailleur", "logement", "loyer"),
+    "it": ("il", "lo", "la", "e", "è", "non", "mio", "mia", "io", "con", "locatore", "appartamento", "affitto"),
+    "en": ("the", "and", "is", "not", "my", "i", "with", "landlord", "apartment", "rent", "flat"),
+}
+_LANG_LINE = {
+    "de": "WICHTIG: Antworte ausschliesslich auf Deutsch (Schweizer Rechtschreibung, ss statt ß), auch wenn "
+          "Anweisungen oder Quellen englisch sind.",
+    "fr": "IMPORTANT : réponds exclusivement en français, même si les instructions ou les sources sont en anglais.",
+    "it": "IMPORTANTE: rispondi esclusivamente in italiano, anche se le istruzioni o le fonti sono in inglese.",
+    "en": "Answer in English.",
+}
+
+
+def detect_language(text: str) -> str:
+    """Rough language guess from frequent words (de/fr/it/en); default German."""
+    words = [w.strip(".,;:!?()«»\"'").lower() for w in (text or "").split()]
+    score = {k: sum(w in v for w in words) for k, v in _STOP.items()}
+    best = max(score, key=score.get)
+    return best if score[best] > 0 else "de"
+
+
+def language_line(text: str) -> str:
+    return _LANG_LINE[detect_language(text)]
 
 
 class OJService:
@@ -74,6 +103,7 @@ class OJService:
         self.client, self.mock = client, mock
         self._graphs: dict[str, Protocol | None] = {}
         self._bases: dict[str, tuple[RunResult, float]] = {}   # response id -> (state before it, start time)
+        self._lang: dict[str, str] = {}                          # execution -> language line (for resumes)
 
     @classmethod
     def create(cls, mock: bool, api_key: str = "", base_url: str = "") -> "OJService":
@@ -96,6 +126,18 @@ class OJService:
         both = [x for x in m["protocol"] if x in set(m["agent"])]
         return both or m["protocol"]
 
+    def protocol_info(self, pid: str) -> dict:
+        """Name + description of a protocol as written in the OpenJustice editor (for the scope hint)."""
+        key = f"info:{pid}"
+        if key not in self._graphs:
+            try:
+                g = self.client.protocol_graph(pid)
+                d = g.get("description") or []
+                self._graphs[key] = {"name": g.get("name", ""), "description": " ".join(d) if isinstance(d, list) else str(d)}
+            except Exception:
+                self._graphs[key] = {"name": "", "description": ""}
+        return self._graphs[key]
+
     def protocol(self, pid: str) -> Protocol | None:
         if pid not in self._graphs:
             try:
@@ -113,7 +155,10 @@ class OJService:
 
     def start(self, pid: str, model: str, prompt: str) -> RunResult:
         body = {"reasoning_protocol_id": pid, "model": model, "input": prompt, "background": True}
-        return self._post(pid, body, RunResult("protocol"))
+        res = self._post(pid, body, RunResult("protocol"))
+        line = next((l for l in reversed(prompt.splitlines()) if l in _LANG_LINE.values()), _LANG_LINE["de"])
+        self._lang[res.execution_id or res.response_id] = line
+        return res
 
     def answer_questions(self, pid: str, model: str, prior: RunResult, answers: dict[str, str]) -> RunResult:
         text = "\n".join(f"{q.label}: {answers.get(q.id) or 'unbekannt'}" for q in prior.pending)
@@ -123,6 +168,8 @@ class OJService:
         return self._resume(pid, model, prior, MISSING_FACT_REPLY)
 
     def _resume(self, pid, model, prior, text) -> RunResult:
+        # repeat the language request: a resume is a new input, and English defaults otherwise creep back in
+        text = f"{text}\n\n{self._lang.get(prior.execution_id or prior.response_id, _LANG_LINE['de'])}"
         body = {"previous_response_id": prior.response_id, "model": model, "input": text, "background": True}
         return self._post(pid, body, prior)
 
@@ -206,7 +253,7 @@ class OJService:
             elif t == "fact":
                 pred = _text(item.get("prediction"))
                 res.steps.append(Step(item.get("node_id", ""), "fact", item.get("label") or item.get("node_id", ""),
-                                      _chip(pred) or pred[:40], item.get("rationale") or ""))
+                                      _chip(pred), (pred + "\n\n" if pred and not _chip(pred) else "") + (item.get("rationale") or "")))
             elif t == "pending_input":
                 asked = _fact_questions(graph)
                 for fd in item.get("fact_definitions", []):

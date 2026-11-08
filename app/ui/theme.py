@@ -11,6 +11,8 @@ CSS = """
 h1, h2, h3, h4 { letter-spacing: -0.015em; }
 
 /* page head */
+.oj-eyebrow { display:inline-block; color:var(--green); background:var(--green-soft); font-size:.82rem; font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase; padding:.2rem .6rem; border-radius:999px; margin-bottom:.7rem; }
 .oj-head h1 { font-size: 2.5rem; font-weight: 700; line-height: 1.1; margin: 0 0 .5rem; padding: 0; }
 .oj-head p { color: var(--muted); font-size: 1.08rem; max-width: 62ch; margin: 0 0 1.6rem; }
 
@@ -21,6 +23,21 @@ h1, h2, h3, h4 { letter-spacing: -0.015em; }
 [class*="st-key-oj-deadline"] { background: var(--amber-soft); border-left: 3px solid var(--amber);
   border-radius: 0 6px 6px 0; padding: .8rem 1rem .3rem; margin: .8rem 0; }
 [class*="st-key-oj-deadline"] strong { color: var(--amber); }
+
+.oj-scope { font-size:.84rem; color:var(--ink); line-height:1.45; margin:-.35rem 0 .9rem;
+  padding:.45rem .6rem; border-left:2px solid var(--green); background:var(--green-soft); border-radius:0 4px 4px 0; }
+.oj-scope span { color:var(--muted); }
+
+/* summary, cards */
+[class*="st-key-oj-summary"] { background: var(--paper); border:1px solid var(--line); border-left:4px solid var(--green);
+  border-radius:0 8px 8px 0; padding:1rem 1.2rem .4rem; margin:.4rem 0 .9rem; }
+[class*="st-key-oj-summary"] .k { color: var(--muted); font-size:.85rem; }
+[class*="st-key-oj-summary"] .v { font-size:1.35rem; font-weight:700; color: var(--green); margin:.1rem 0 .4rem; }
+[class*="st-key-oj-summary"] p { font-size:1.18rem; line-height:1.55; font-weight:600; color:var(--ink); }
+[class*="st-key-oj-card"] { background: var(--paper); }
+[class*="st-key-oj-card"] p, [class*="st-key-oj-card"] li { font-size:.95rem; line-height:1.5; }
+.oj-field { color: var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; margin:.55rem 0 .1rem; }
+.oj-field.warn { color: var(--amber); }
 
 /* outcome */
 .oj-outcome { display:flex; align-items:baseline; gap:.7rem; margin:.2rem 0 1rem; }
@@ -75,7 +92,8 @@ def inject() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
 
 
-def head(title: str, lead: str) -> None:
+def head(title: str, lead: str, eyebrow: str = "") -> None:
     import html
-    st.markdown(f'<div class="oj-head"><h1>{html.escape(title)}</h1><p>{html.escape(lead)}</p></div>',
+    eb = f'<div class="oj-eyebrow">{html.escape(eyebrow)}</div>' if eyebrow else ""
+    st.markdown(f'<div class="oj-head">{eb}<h1>{html.escape(title)}</h1><p>{html.escape(lead)}</p></div>',
                 unsafe_allow_html=True)

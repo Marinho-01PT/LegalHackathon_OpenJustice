@@ -8,3 +8,6 @@ results/*
 !results/.gitkeep
 __pycache__/
 .DS_Store
+
+# local virtualenv
+.venv/

@@ -37,7 +37,7 @@ def load_settings() -> Settings:
         default_protocol=os.environ.get("OJ_PROTOCOL_ID", "").strip(),
         default_model=os.environ.get("OJ_MODEL", "").strip(),
         mock=os.environ.get("APP_MOCK", "").strip() in ("1", "true", "yes") or not key,
-        app_name=os.environ.get("APP_NAME", "Mietkompass").strip(),
+        app_name=os.environ.get("APP_NAME", "ProtoLex").strip(),
         legal_area=os.environ.get("LEGAL_AREA", "Mietrecht").strip(),
         publicai_key=os.environ.get("PUBLICAI_API_KEY", "").strip(),
         publicai_model=os.environ.get("PUBLICAI_MODEL", "").strip(),

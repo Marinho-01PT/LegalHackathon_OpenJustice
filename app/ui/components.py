@@ -40,27 +40,72 @@ def outcome(res: RunResult) -> None:
                     f'<span class="v">{html.escape(res.outcome_label)}</span></div>', unsafe_allow_html=True)
 
 
+OUT_OF_SCOPE = re.compile(r"ausserhalb|außerhalb|nicht (anwendbar|abgedeckt)|out of scope", re.I)
+GENERIC_LABEL = re.compile(r"^\s*(outcome|ergebnis|result|resultat|end|ende|output)\s*\d*\s*$", re.I)
+_WARN_HEAD = re.compile(r"achtung|vorkehrung|hinweis|risik|wichtig|vorsicht", re.I)
+
+
 def answer(res: RunResult, key: str) -> None:
+    """Answer as readable blocks: summary, deadlines, one card per remedy. Built by the app from whatever
+    markdown the model returns (app/core/answer_parse.py), so it does not depend on the protocol's output format."""
     if res.status == "failed":
         st.error(res.error or "Unbekannter Fehler.")
         return
+    if not (res.answer or "").strip():
+        st.caption("Keine Antwort erhalten.")
+        return
+    try:
+        _structured(res, key)
+    except Exception:                       # never lose an answer because of the layout
+        with st.container(key=f"oj-answer-{key}"):
+            st.markdown(res.answer)
+
+
+def _structured(res: RunResult, key: str) -> None:
+    """Plain text like the original view, cleaned up: no greeting/sign-off, tables turned into short lists
+    (markdown tables with lists inside cells break), headings kept. No boxes, no expander."""
+    from app.core.answer_parse import parse, to_markdown
+    p = parse(res.answer)
+    if res.outcome_label and OUT_OF_SCOPE.search(res.outcome_label):
+        st.warning("Diese Frage liegt ausserhalb des Prüfschemas. Wenden Sie sich an den Mieterinnen- und "
+                   "Mieterverband (mieterverband.ch) oder die Schlichtungsbehörde Ihres Kantons.")
+    label = res.outcome_label or ""
+    if label and not GENERIC_LABEL.match(label) and label != res.outcome_id:
+        outcome(res)
     with st.container(key=f"oj-answer-{key}"):
-        sections = split_sections(res.answer)
-        if not sections:
-            st.caption("Keine Antwort erhalten.")
-        for i, (h, body) in enumerate(sections):
-            low = h.lower()
-            if "frist" in low:
-                with st.container(key=f"oj-deadline-{key}-{i}"):
-                    st.markdown(f"**{h.replace('⚠', '').strip()}**")
-                    st.markdown(body)
-            elif low.startswith("hinweis"):
-                st.caption(body)
-            else:
-                if h:
-                    st.markdown(f"#### {h}")
-                if body:
-                    st.markdown(body)
+        if p.summary and not p.summary_from_text:
+            st.markdown(f"**{p.summary}**")             # the model's own bold conclusion, kept at the top
+        st.markdown(to_markdown(p, heading="####") or res.answer)
+        disclaimer = " ".join(b for sec in p.sections if sec.kind == "disclaimer" for k, b in sec.blocks if k == "text")
+        if disclaimer:
+            st.caption(disclaimer)
+
+
+def _cards(cards, key: str) -> None:
+    per_row = 3 if len(cards) >= 3 else max(1, len(cards))
+    for r in range(0, len(cards), per_row):
+        cols = st.columns(per_row, gap="small")
+        for col, c in zip(cols, cards[r:r + per_row]):
+            with col, st.container(border=True, key=f"oj-card-{key}-{r}-{c.title[:20]}"):
+                st.markdown(f"**{c.title}**")
+                if c.refs:
+                    _ref_chips(c.refs)
+                for head, items in c.fields:
+                    warn = bool(_WARN_HEAD.search(head))
+                    st.markdown(f'<div class="oj-field{" warn" if warn else ""}">{html.escape(head)}</div>',
+                                unsafe_allow_html=True)
+                    st.markdown("\n".join(f"- {x}" for x in items) if len(items) > 1 else items[0])
+
+
+def _ref_chips(refs: list[str]) -> None:
+    status = {x["ref"]: x for x in check_sources(" ".join(refs))}
+    chips = []
+    for ref in refs:
+        short = re.sub(r"\s*Abs\..*?(?=\s(?:OR|ZGB|ZPO|VMWG|BV|SchKG)\b)", "", ref)   # status is per article
+        x = status.get(re.sub(r"\s+", " ", short)) or {"status": "unchecked", "url": None}
+        el, tag = ("a", f'href="{x["url"]}" target="_blank"') if x.get("url") else ("span", "")
+        chips.append(f'<{el} class="{x["status"]}" {tag}>{html.escape(ref)}</{el}>')
+    st.markdown('<div class="oj-src">' + "".join(chips) + "</div>", unsafe_allow_html=True)
 
 
 def path(res: RunResult) -> None:

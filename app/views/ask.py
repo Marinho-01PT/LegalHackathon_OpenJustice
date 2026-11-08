@@ -82,33 +82,56 @@ def _questions(res, pid: str, model: str) -> None:
 
 
 def _result(res) -> None:
-    ui.outcome(res)
-    left, right = st.columns([1.7, 1], gap="large")
-    with left:
-        ui.answer(res, "ask")
-    with right:
-        st.markdown("**Prüfpfad**")
+    """Answer in full width; Prüfpfad, sources and LLM calls below in tabs (they no longer squeeze the answer)."""
+    ui.answer(res, "ask")
+    st.write("")
+    n = len([s for s in res.steps if s.kind != "outcome"])
+    t1, t2, t3 = st.tabs([f"Prüfpfad ({n} Schritte)", "Zitierte Artikel", "LLM-Aufrufe"])
+    with t1:
         st.caption("Diese Schritte des Prüfschemas hat das Modell durchlaufen.")
         ui.path(res)
-    st.markdown("**Zitierte Artikel**")
-    ui.sources(res)
-    with st.expander("LLM-Aufrufe je Prüfschritt"):
+    with t2:
+        ui.sources(res)
+    with t3:
         ui.traces(res, "ask")
     ui.usage(res)
+
+
+def _scope(pid: str | None) -> None:
+    """Which topic the selected protocol covers, from APP_SCOPE or the protocol's own name/description."""
+    import os
+    if not pid:
+        return
+    scope = os.environ.get("APP_SCOPE", "").strip()
+    if not scope:
+        info = state.service().protocol_info(pid)
+        scope = info.get("description") or info.get("name") or ""
+    if scope:
+        st.info(f"**Dieses Prüfschema deckt ab:** {scope}  \nFür andere Themen ist die Einschätzung nicht verlässlich. "
+                "Wenden Sie sich dann an den Mieterinnen- und Mieterverband oder die Schlichtungsbehörde Ihres Kantons.",
+                icon=":material/info:")
 
 
 def render() -> None:
     s = state.settings()
     autorun = _apply_prefill()
+    pid_sel = state.selection()[0]
+    proto_name = ""
+    if pid_sel:
+        try:
+            proto_name = state.service().protocol_info(pid_sel).get("name", "")
+        except Exception:
+            proto_name = ""
     theme.head("Was ist bei Ihnen passiert?",
                "Schildern Sie Ihre Situation in eigenen Worten. Die Einschätzung folgt dem Prüfschema, "
-               "das Juristinnen und Juristen in OpenJustice erstellt haben, und zeigt jeden Prüfschritt.")
+               "das Juristinnen und Juristen in OpenJustice erstellt haben, und zeigt jeden Prüfschritt.",
+               eyebrow=f"Prüfschema: {proto_name}" if proto_name else "")
 
     with st.form("ask_form", border=False):
         facts = st.text_area("Ihre Situation", key="facts", height=150,
-                             placeholder="Zum Beispiel: Mein Vermieter hat mir am 3. Oktober per Brief mitgeteilt, "
-                                         "dass die Miete ab Januar um 8 % steigt. Ein Formular lag nicht bei.")
-        question = st.text_input("Ihre Frage", key="question", placeholder="Muss ich die Erhöhung anfechten?")
+                             placeholder="Zum Beispiel: Seit zwei Wochen funktioniert die Heizung im Wohnzimmer nicht mehr. "
+                                         "Ich habe es dem Vermieter am 28. Oktober gemeldet, passiert ist nichts.")
+        question = st.text_input("Ihre Frage", key="question", placeholder="Was kann ich tun, und brauche ich eine Juristin?")
         c1, c2, c3 = st.columns([1.1, 1.1, 1], vertical_alignment="bottom")
         canton = c1.selectbox("Kanton", CANTONS, index=CANTONS.index("St. Gallen"), key="canton")
         place = c2.text_input("Wohnort (optional)", key="place", placeholder="z. B. Rorschach",
